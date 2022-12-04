@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sort"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -20,7 +21,7 @@ type valAdd struct {
 	moniker         string
 	opAdd           string
 	accAdd          string
-	votingpower     string
+	votingpower     float64
 	selfDelegation  string
 	totalDelegation string
 }
@@ -34,8 +35,12 @@ func main() {
 	var valAddresses = getValAddresses(vals)
 	getSelfDelegation(grpcConn, valAddresses)
 
-	defer grpcConn.Close()
+	sort.Slice(valAdds, func(i, j int) bool {
+		return valAdds[i].votingpower > (valAdds[j].votingpower)
+	})
+
 	exportCSV(valAdds)
+	defer grpcConn.Close()
 }
 
 func getGrpcConn() (*grpc.ClientConn, error) {
@@ -56,15 +61,14 @@ func getVals(grpcConn *grpc.ClientConn) ([]staking.Validator, error) {
 	// This creates a gRPC client to query the x/staking service.
 	stakingClient := staking.NewQueryClient(grpcConn)
 	// bankClient := bank.NewQueryClient(grpcConn)
-	stakingRes2, err := stakingClient.Validators(
+	stakingRes, err := stakingClient.Validators(
 		context.Background(),
 		&staking.QueryValidatorsRequest{Status: "BOND_STATUS_BONDED"},
 	)
 	if err != nil {
 		return nil, err
 	}
-	vals := stakingRes2.GetValidators()
-
+	vals := stakingRes.Validators // Here I only do get 100(vals) instead of 175(from stakingRes)
 	return vals, nil
 }
 
@@ -100,7 +104,7 @@ func getValAddresses(vals []staking.Validator) []valAdd {
 
 	for _, val := range vals {
 		accAdd, _ := deriveValAccAddress(val)
-		vP := fmt.Sprintf("%f", getVotingPower(val, totalConsensusPower))
+		vP := getVotingPower(val, totalConsensusPower)
 		valAdds = append(valAdds, valAdd{val.GetMoniker(), val.OperatorAddress, accAdd.String(), vP, ph.String(), val.BondedTokens().String() + "uatom"})
 	}
 
@@ -113,17 +117,22 @@ func getSelfDelegation(grpcConn *grpc.ClientConn, valAdds []valAdd,
 	// This creates a gRPC client to query the x/staking service.
 	stakingClient := staking.NewQueryClient(grpcConn)
 
-	for _, val := range valAdds {
-		stakingRes4, _ := stakingClient.DelegatorDelegations(
+	for i, val := range valAdds {
+		stakingRes, err := stakingClient.DelegatorDelegations(
 			context.Background(),
 			&staking.QueryDelegatorDelegationsRequest{DelegatorAddr: val.accAdd},
 		)
+		if err != nil {
+			return err
+		}
 
-		var delRes []staking.DelegationResponse = stakingRes4.DelegationResponses
+		var delRes []staking.DelegationResponse = stakingRes.DelegationResponses
 
-		for i, del := range delRes {
+		for _, del := range delRes {
 			if del.Delegation.DelegatorAddress == val.accAdd {
 				valAdds[i].selfDelegation = del.Balance.String()
+			} else {
+				return fmt.Errorf("something went wrong")
 			}
 		}
 	}
@@ -131,7 +140,6 @@ func getSelfDelegation(grpcConn *grpc.ClientConn, valAdds []valAdd,
 }
 
 func exportCSV(valAdds []valAdd) {
-
 	file, err := os.Create("challenge_01.csv")
 	if err != nil {
 		log.Fatalln("failed to open file", err)
@@ -140,10 +148,11 @@ func exportCSV(valAdds []valAdd) {
 	defer w.Flush()
 	// Using Write
 	for _, val := range valAdds {
-		row := []string{val.moniker, val.votingpower, val.selfDelegation, val.totalDelegation}
+		row := []string{val.moniker, fmt.Sprintf("%f", val.votingpower), val.selfDelegation, val.totalDelegation}
 		if err := w.Write(row); err != nil {
 			log.Fatalln("error writing record to file", err)
 		}
+		// fmt.Println(i, row)
 	}
 	defer file.Close()
 }
