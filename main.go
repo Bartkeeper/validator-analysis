@@ -36,24 +36,26 @@ type delegators struct {
 
 var delegator []delegators
 
+type delegatorValidator struct {
+	delegatorAddr string
+	validatorAddr string
+	bondedToken   string
+}
+
+var delVal []delegatorValidator
+
+var sfDelegators []staking.DelegationResponse
+var validator staking.Validator
+var grpcConn *grpc.ClientConn
+
 func main() {
-	var grpcConn *grpc.ClientConn
+
 	grpcConn, _ = getGrpcConn()
-	var vals, _ = getVals(grpcConn)
-	var valAddresses = getValAddresses(vals)
-	getSelfDelegation(grpcConn, valAddresses)
 
-	sort.Slice(valAdds, func(i, j int) bool {
-		return valAdds[i].votingpower > (valAdds[j].votingpower)
-	})
+	output01(grpcConn)
+	output02(grpcConn)
+	output03(grpcConn)
 
-	exportOP1(valAdds)
-
-	getDelegators(grpcConn)
-	sort.Slice(delegator, func(i, j int) bool {
-		return delegator[i].votingpower > delegator[j].votingpower
-	})
-	exportOP2(delegator)
 	defer grpcConn.Close()
 }
 
@@ -68,6 +70,39 @@ func getGrpcConn() (*grpc.ClientConn, error) {
 	}
 
 	return grpcConn, nil
+}
+
+func output01(grpcConn *grpc.ClientConn) {
+	var vals, _ = getVals(grpcConn)
+	var valAddresses = getValAddresses(vals)
+	getSelfDelegation(grpcConn, valAddresses)
+
+	sort.Slice(valAdds, func(i, j int) bool {
+		return valAdds[i].votingpower > (valAdds[j].votingpower)
+	})
+	exportOP1(valAdds)
+}
+
+func output02(grpcConn *grpc.ClientConn) {
+	sfDelegators, _ = getSFDelegators(grpcConn)
+	validator, _ = getValidator(grpcConn)
+	appendDelegatorData(sfDelegators, validator)
+
+	sort.Slice(delegator, func(i, j int) bool {
+		return delegator[i].votingpower > delegator[j].votingpower
+	})
+	exportOP2(delegator)
+}
+
+func output03(grpcConn *grpc.ClientConn) {
+	if len(sfDelegators) < 1 {
+		sfDelegators, _ = getSFDelegators(grpcConn)
+	}
+	appendValidatorsOfDelegator(grpcConn, sfDelegators)
+	sort.Slice(delVal, func(i, j int) bool {
+		return delVal[i].delegatorAddr > delVal[j].delegatorAddr
+	})
+	exportOP3(delVal)
 }
 
 func getVals(grpcConn *grpc.ClientConn) ([]staking.Validator, error) {
@@ -171,7 +206,7 @@ func exportOP1(valAdds []valAdd) {
 	defer file.Close()
 }
 
-func getDelegators(grpcConn *grpc.ClientConn) error {
+func getSFDelegators(grpcConn *grpc.ClientConn) ([]staking.DelegationResponse, error) {
 	stakingClient := staking.NewQueryClient(grpcConn)
 
 	stakingRes, err := stakingClient.ValidatorDelegations(
@@ -179,24 +214,56 @@ func getDelegators(grpcConn *grpc.ClientConn) error {
 		&staking.QueryValidatorDelegationsRequest{ValidatorAddr: "cosmosvaloper1x88j7vp2xnw3zec8ur3g4waxycyz7m0mahdv3p"},
 	)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	var delRes []staking.DelegationResponse = stakingRes.DelegationResponses
+
+	return delRes, nil
+}
+
+func appendValidatorsOfDelegator(grpcConn *grpc.ClientConn, delRes []staking.DelegationResponse) error {
+	stakingClient := staking.NewQueryClient(grpcConn)
+
+	for _, del := range delRes {
+		stakingRes2, err := stakingClient.DelegatorDelegations(
+			context.Background(),
+			&staking.QueryDelegatorDelegationsRequest{DelegatorAddr: del.Delegation.DelegatorAddress},
+		)
+		if err != nil {
+			return err
+		}
+
+		var delRes = stakingRes2.DelegationResponses
+
+		for _, del := range delRes {
+			delVal = append(delVal, delegatorValidator{del.Delegation.DelegatorAddress, del.Delegation.ValidatorAddress, del.Balance.String()})
+		}
+
+	}
+
+	return nil
+}
+
+func getValidator(grpcConn *grpc.ClientConn) (staking.Validator, error) {
+	stakingClient := staking.NewQueryClient(grpcConn)
 
 	stakingRes2, err := stakingClient.Validator(
 		context.Background(),
 		&staking.QueryValidatorRequest{ValidatorAddr: "cosmosvaloper1x88j7vp2xnw3zec8ur3g4waxycyz7m0mahdv3p"},
 	)
 	if err != nil {
-		return err
+		return staking.Validator{}, err
 	}
 	var val staking.Validator = stakingRes2.Validator
+
+	return val, nil
+}
+
+func appendDelegatorData(delRes []staking.DelegationResponse, val staking.Validator) {
 	var totalDelegation float64 = val.DelegatorShares.MustFloat64()
 	for _, del := range delRes {
 		delegator = append(delegator, delegators{del.Delegation.DelegatorAddress, del.Balance.String(), float64(del.Balance.Amount.Int64()) / totalDelegation})
 	}
-
-	return nil
 }
 
 func exportOP2(delegator []delegators) {
@@ -209,6 +276,24 @@ func exportOP2(delegator []delegators) {
 	// Using Write
 	for _, del := range delegator {
 		row := []string{del.address, fmt.Sprintf("%f", del.votingpower)}
+		if err := w.Write(row); err != nil {
+			log.Fatalln("error writing record to file", err)
+		}
+		// fmt.Println(i, row)
+	}
+	defer file.Close()
+}
+
+func exportOP3(delVal []delegatorValidator) {
+	file, err := os.Create("output_01_03.csv")
+	if err != nil {
+		log.Fatalln("failed to open file", err)
+	}
+	w := csv.NewWriter(file)
+	defer w.Flush()
+	// Using Write
+	for _, del := range delVal {
+		row := []string{del.delegatorAddr, del.validatorAddr, del.bondedToken}
 		if err := w.Write(row); err != nil {
 			log.Fatalln("error writing record to file", err)
 		}
