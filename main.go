@@ -28,6 +28,14 @@ type valAdd struct {
 
 var valAdds []valAdd
 
+type delegators struct {
+	address     string
+	delegation  string
+	votingpower float64
+}
+
+var delegator []delegators
+
 func main() {
 	var grpcConn *grpc.ClientConn
 	grpcConn, _ = getGrpcConn()
@@ -39,7 +47,13 @@ func main() {
 		return valAdds[i].votingpower > (valAdds[j].votingpower)
 	})
 
-	exportCSV(valAdds)
+	exportOP1(valAdds)
+
+	getDelegators(grpcConn)
+	sort.Slice(delegator, func(i, j int) bool {
+		return delegator[i].votingpower > delegator[j].votingpower
+	})
+	exportOP2(delegator)
 	defer grpcConn.Close()
 }
 
@@ -139,7 +153,7 @@ func getSelfDelegation(grpcConn *grpc.ClientConn, valAdds []valAdd,
 	return nil
 }
 
-func exportCSV(valAdds []valAdd) {
+func exportOP1(valAdds []valAdd) {
 	file, err := os.Create("challenge_01.csv")
 	if err != nil {
 		log.Fatalln("failed to open file", err)
@@ -149,6 +163,52 @@ func exportCSV(valAdds []valAdd) {
 	// Using Write
 	for _, val := range valAdds {
 		row := []string{val.moniker, fmt.Sprintf("%f", val.votingpower), val.selfDelegation, val.totalDelegation}
+		if err := w.Write(row); err != nil {
+			log.Fatalln("error writing record to file", err)
+		}
+		// fmt.Println(i, row)
+	}
+	defer file.Close()
+}
+
+func getDelegators(grpcConn *grpc.ClientConn) error {
+	stakingClient := staking.NewQueryClient(grpcConn)
+
+	stakingRes, err := stakingClient.ValidatorDelegations(
+		context.Background(),
+		&staking.QueryValidatorDelegationsRequest{ValidatorAddr: "cosmosvaloper1x88j7vp2xnw3zec8ur3g4waxycyz7m0mahdv3p"},
+	)
+	if err != nil {
+		return err
+	}
+	var delRes []staking.DelegationResponse = stakingRes.DelegationResponses
+
+	stakingRes2, err := stakingClient.Validator(
+		context.Background(),
+		&staking.QueryValidatorRequest{ValidatorAddr: "cosmosvaloper1x88j7vp2xnw3zec8ur3g4waxycyz7m0mahdv3p"},
+	)
+	if err != nil {
+		return err
+	}
+	var val staking.Validator = stakingRes2.Validator
+	var totalDelegation float64 = val.DelegatorShares.MustFloat64()
+	for _, del := range delRes {
+		delegator = append(delegator, delegators{del.Delegation.DelegatorAddress, del.Balance.String(), float64(del.Balance.Amount.Int64()) / totalDelegation})
+	}
+
+	return nil
+}
+
+func exportOP2(delegator []delegators) {
+	file, err := os.Create("output_01_02.csv")
+	if err != nil {
+		log.Fatalln("failed to open file", err)
+	}
+	w := csv.NewWriter(file)
+	defer w.Flush()
+	// Using Write
+	for _, del := range delegator {
+		row := []string{del.address, fmt.Sprintf("%f", del.votingpower)}
 		if err := w.Write(row); err != nil {
 			log.Fatalln("error writing record to file", err)
 		}
