@@ -11,48 +11,110 @@ import (
 	"github.com/nexidian/gocliselect"
 )
 
-/*
-type valAdd struct {
-	moniker         string
-	opAdd           string
-	accAdd          string
-	votingpower     float64
-	selfDelegation  string
-	totalDelegation string
-}
-
-var valAdds []valAdd
-
-type delegators struct {
-	address     string
-	delegation  string
-	votingpower float64
-}
-
-var delegator []delegators
-
-type delegatorValidator struct {
-	delegatorAddr string
-	validatorAddr string
-	bondedToken   string
-}
-
-var delVal []delegatorValidator
-*/
 var sfDelegators []staking.DelegationResponse
 var validator staking.Validator
-var GrpcConn *grpc.ClientConn
+var GrpcConnC1 *grpc.ClientConn
+var GrpcConnC2 *grpc.ClientConn
+
+// var UmeeGenesis string = "https://raw.githubusercontent.com/umee-network/mainnet/main/genesis.json"
+
+// type baseGenesis struct {
+// 	Genesis_time     time.Time
+// 	Chain_id         string
+// 	Initial_height   string
+// 	Consensus_Params ConsensusParam
+// 	App_hash         string
+// 	App_state        AppState
+// }
+
+// type ConsensusParam struct {
+// 	Block     BlockStruct
+// 	Evidence  EvidenceStruct
+// 	Validator ValidatorStruct
+// 	Version   any
+// }
+
+// type BlockStruct struct {
+// 	Max_bytes    string
+// 	Max_gas      string
+// 	Time_iota_ms string
+// }
+
+// type EvidenceStruct struct {
+// 	Max_age_num_blocks string
+// 	Max_age_duration   string
+// 	Max_bytes          string
+// }
+
+// type ValidatorStruct struct {
+// 	Pub_key_types []string
+// }
+
+// type AppState struct {
+// 	Auth         AuthStruct
+// 	Authz        map[string]interface{}
+// 	Bank         map[string]interface{}
+// 	Capability   map[string]interface{}
+// 	Crisis       map[string]interface{}
+// 	Distribution map[string]interface{}
+// 	Evidence     map[string]interface{}
+// 	Feegrant     map[string]interface{}
+// 	Genutil      map[string]interface{}
+// 	Gov          map[string]interface{}
+// 	Gravity      map[string]interface{}
+// 	Ibc          map[string]interface{}
+// 	Mint         map[string]interface{}
+// 	Params       map[string]interface{}
+// 	Slashing     map[string]interface{}
+// 	Staking      map[string]interface{}
+// 	Transfer     map[string]interface{}
+// 	Upgrade      map[string]interface{}
+// 	Vesting      map[string]interface{}
+// }
+
+// type AuthStruct struct {
+// 	Params   map[string]interface{}
+// 	Accounts []AccountStruct
+// }
+
+// type AccountStruct struct {
+// 	Typ                  string
+// 	Base_vesting_account BaseVestingAccount
+// }
+
+// type BaseVestingAccount struct {
+// 	Base_account      BaseAccountStruct
+// 	Original_vesting  []VestingStruct
+// 	Delegated_free    []any
+// 	Delegated_vesting []any
+// 	End_time          string
+// }
+
+// type BaseAccountStruct struct {
+// 	Address        string
+// 	Pub_key        string
+// 	Account_number string
+// 	Sequence       string
+// }
+
+// type VestingStruct struct {
+// 	Denom  string
+// 	Amount string
+// }
+
+// type vestingAccs struct {
+// 	vestAddress string
+// 	vestTokens  string
+// 	unlockDate  string
+// }
+
+// var vestingAnalysis []vestingAccs
+// var payload baseGenesis
 
 func main() {
-	GrpcConn, _ = getGrpcConn()
+
 	startMenu()
-	/*
 
-		Output01(GrpcConn)
-		output02(GrpcConn)
-		output03(GrpcConn)
-
-		defer GrpcConn.Close() */
 }
 
 func startMenu() {
@@ -61,6 +123,7 @@ func startMenu() {
 	menu.AddItem("Challenge #01 Output #1", "c1o1")
 	menu.AddItem("Challenge #01 Output #2", "c1o2")
 	menu.AddItem("Challenge #01 Output #3", "c1o3")
+	menu.AddItem("Challenge #02", "c2")
 
 	choice := menu.Display()
 
@@ -69,17 +132,31 @@ func startMenu() {
 	switch choice {
 	case "c1o1":
 		fmt.Println("You just started Challenge #01 Output #1. Please hold on while we query the node and generate the csv dump.")
-		output01(GrpcConn)
+		GrpcConnC1, _ = getGrpcConnC1()
+		output01(GrpcConnC1)
+		defer GrpcConnC1.Close()
 		fmt.Println("CSV dump available")
 	case "c1o2":
-		output02(GrpcConn)
+		fmt.Println("You just started Challenge #01 Output #2. Please hold on while we query the node and generate the csv dump.")
+		GrpcConnC1, _ = getGrpcConnC1()
+		output02(GrpcConnC1)
+		defer GrpcConnC1.Close()
+		fmt.Println("CSV dump available")
 	case "c1o3":
-		output03(GrpcConn)
+		fmt.Println("You just started Challenge #01 Output #3. Please hold on while we query the node and generate the csv dump.")
+		GrpcConnC1, _ = getGrpcConnC1()
+		output03(GrpcConnC1)
+		defer GrpcConnC1.Close()
+		fmt.Println("CSV dump available")
+	case "c2":
+		fmt.Println("You just started Challenge #02. Please make sure the genesis file is in this repo.")
+		Output04()
+		fmt.Println("CSV dump available")
 	}
 }
 
-func getGrpcConn() (*grpc.ClientConn, error) {
-	grpcConn, err := grpc.Dial(
+func getGrpcConnC1() (*grpc.ClientConn, error) {
+	grpcConnC1, err := grpc.Dial(
 		"cosmos-grpc.polkachu.com:14990", // Polkachu's gRPC server address.
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithDefaultCallOptions(grpc.ForceCodec(codec.NewProtoCodec(nil).GRPCCodec())),
@@ -88,243 +165,61 @@ func getGrpcConn() (*grpc.ClientConn, error) {
 		return nil, err
 	}
 
-	return grpcConn, nil
+	return grpcConnC1, nil
 }
 
-// func output01(grpcConn *grpc.ClientConn) {
-// 	var vals, _ = getVals(grpcConn)
-// 	var valAddresses = getValAddresses(vals)
-// 	getSelfDelegation(grpcConn, valAddresses)
+// func getGenesis(grpcConn *grpc.ClientConn) error {
 
-// 	sort.Slice(valAdds, func(i, j int) bool {
-// 		return valAdds[i].votingpower > (valAdds[j].votingpower)
-// 	})
-// 	exportOP1(valAdds)
-// }
-
-// func output02(grpcConn *grpc.ClientConn) {
-// 	sfDelegators, _ = getSFDelegators(grpcConn)
-// 	validator, _ = getValidator(grpcConn)
-// 	appendDelegatorData(sfDelegators, validator)
-
-// 	sort.Slice(delegator, func(i, j int) bool {
-// 		return delegator[i].votingpower > delegator[j].votingpower
-// 	})
-// 	exportOP2(delegator)
-// }
-
-// func output03(grpcConn *grpc.ClientConn) {
-// 	if len(sfDelegators) < 1 {
-// 		sfDelegators, _ = getSFDelegators(grpcConn)
-// 	}
-// 	appendValidatorsOfDelegator(grpcConn, sfDelegators)
-// 	sort.Slice(delVal, func(i, j int) bool {
-// 		return delVal[i].delegatorAddr > delVal[j].delegatorAddr
-// 	})
-// 	exportOP3(delVal)
-// }
-
-// func getVals(grpcConn *grpc.ClientConn) ([]staking.Validator, error) {
-
-// 	// This creates a gRPC client to query the x/staking service.
-// 	stakingClient := staking.NewQueryClient(grpcConn)
-// 	stakingRes, err := stakingClient.Validators(
-// 		context.Background(),
-// 		&staking.QueryValidatorsRequest{
-// 			Status:     "BOND_STATUS_BONDED",
-// 			Pagination: &query.PageRequest{Limit: 500, CountTotal: true}},
-// 	)
+// 	content, err := ioutil.ReadFile("./umee-genesis.json")
 // 	if err != nil {
-// 		return nil, err
-// 	}
-// 	vals := stakingRes.Validators // Here I only do get 100(vals) instead of 175(from stakingRes)
-// 	return vals, nil
-// }
-
-// func getTotalTokens(vals []staking.Validator) int64 {
-// 	var total int64
-// 	for _, val := range vals {
-// 		total = total + val.GetBondedTokens().BigInt().Int64()
+// 		log.Fatal("Error when opening file: ", err)
 // 	}
 
-// 	return total
-// }
-
-// func getVotingPower(val staking.Validator, totalTokens int64) float64 {
-// 	var vp = float64(val.BondedTokens().Int64()) / float64(totalTokens)
-// 	return vp
-// }
-
-// func deriveValAccAddress(val staking.Validator) (sdk.AccAddress, error) {
-// 	valAddr, err := sdk.ValAddressFromBech32(val.OperatorAddress)
+// 	err = json.Unmarshal(content, &payload)
 // 	if err != nil {
-// 		return nil, err
+// 		log.Fatal("Error when opening file: ", err)
 // 	}
-// 	accAddr, err := sdk.AccAddressFromHexUnsafe(hex.EncodeToString(valAddr.Bytes()))
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	return accAddr, nil
+
+// 	return err
+
 // }
 
-// func getValAddresses(vals []staking.Validator) []valAdd {
-// 	var ph sdk.Coin
-// 	var totalConsensusPower = getTotalTokens(vals)
+// func appendVestingData(payload baseGenesis) {
 
-// 	for _, val := range vals {
-// 		accAdd, _ := deriveValAccAddress(val)
-// 		vP := getVotingPower(val, totalConsensusPower)
-// 		valAdds = append(valAdds, valAdd{val.GetMoniker(), val.OperatorAddress, accAdd.String(), vP, ph.String(), val.BondedTokens().String() + "uatom"})
-// 	}
-
-// 	return valAdds
-// }
-
-// func getSelfDelegation(grpcConn *grpc.ClientConn, valAdds []valAdd,
-// ) error {
-
-// 	// This creates a gRPC client to query the x/staking service.
-// 	stakingClient := staking.NewQueryClient(grpcConn)
-
-// 	for i, val := range valAdds {
-// 		stakingRes, err := stakingClient.DelegatorDelegations(
-// 			context.Background(),
-// 			&staking.QueryDelegatorDelegationsRequest{
-// 				DelegatorAddr: val.accAdd,
-// 				Pagination:    &query.PageRequest{Limit: 500, CountTotal: true},
-// 			},
-// 		)
-// 		if err != nil {
-// 			return err
-// 		}
-
-// 		var delRes []staking.DelegationResponse = stakingRes.DelegationResponses
-
-// 		for _, del := range delRes {
-// 			if del.Delegation.DelegatorAddress == val.accAdd {
-// 				valAdds[i].selfDelegation = del.Balance.String()
-// 			} else {
-// 				return fmt.Errorf("something went wrong")
+// 	for _, acc := range payload.App_state.Auth.Accounts {
+// 		var vestingAmount string
+// 		var unlockTime time.Time
+// 		if acc.Base_vesting_account.End_time != "" {
+// 			i, err := strconv.ParseInt(acc.Base_vesting_account.End_time, 10, 64)
+// 			if err != nil {
+// 				panic(err)
 // 			}
+
+// 			unlockTime = time.Unix(i, 0)
 // 		}
-// 	}
-// 	return nil
-// }
-
-// func exportOP1(valAdds []valAdd) {
-// 	file, err := os.Create("challenge_01.csv")
-// 	if err != nil {
-// 		log.Fatalln("failed to open file", err)
-// 	}
-// 	w := csv.NewWriter(file)
-// 	defer w.Flush()
-// 	// Using Write
-// 	for _, val := range valAdds {
-// 		row := []string{val.moniker, fmt.Sprintf("%f", val.votingpower), val.selfDelegation, val.totalDelegation}
-// 		if err := w.Write(row); err != nil {
-// 			log.Fatalln("error writing record to file", err)
+// 		for _, amount := range acc.Base_vesting_account.Original_vesting {
+// 			vestingAmount = amount.Amount + amount.Denom
 // 		}
-// 		// fmt.Println(i, row)
+// 		vestingAnalysis = append(vestingAnalysis, vestingAccs{
+// 			acc.Base_vesting_account.Base_account.Address,
+// 			vestingAmount,
+// 			unlockTime.String(),
+// 		})
 // 	}
-// 	defer file.Close()
+
 // }
 
-// func getSFDelegators(grpcConn *grpc.ClientConn) ([]staking.DelegationResponse, error) {
-// 	stakingClient := staking.NewQueryClient(grpcConn)
-
-// 	stakingRes, err := stakingClient.ValidatorDelegations(
-// 		context.Background(),
-// 		&staking.QueryValidatorDelegationsRequest{
-// 			ValidatorAddr: "cosmosvaloper1x88j7vp2xnw3zec8ur3g4waxycyz7m0mahdv3p",
-// 			Pagination:    &query.PageRequest{Limit: 500, CountTotal: true}},
-// 	)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	var delRes []staking.DelegationResponse = stakingRes.DelegationResponses
-
-// 	return delRes, nil
-// }
-
-// func appendValidatorsOfDelegator(grpcConn *grpc.ClientConn, delRes []staking.DelegationResponse) error {
-// 	stakingClient := staking.NewQueryClient(grpcConn)
-
-// 	for _, del := range delRes {
-// 		stakingRes2, err := stakingClient.DelegatorDelegations(
-// 			context.Background(),
-// 			&staking.QueryDelegatorDelegationsRequest{
-// 				DelegatorAddr: del.Delegation.DelegatorAddress,
-// 				Pagination:    &query.PageRequest{Limit: 500, CountTotal: true}},
-// 		)
+// func calcUnlockTime(unixTimestamp string) time.Time {
+// 	if unixTimestamp != "" {
+// 		i, err := strconv.ParseInt(unixTimestamp, 10, 64)
 // 		if err != nil {
-// 			return err
+// 			panic(err)
 // 		}
 
-// 		var delRes = stakingRes2.DelegationResponses
+// 		var unlockTime = time.Unix(i, 0)
 
-// 		for _, del := range delRes {
-// 			delVal = append(delVal, delegatorValidator{del.Delegation.DelegatorAddress, del.Delegation.ValidatorAddress, del.Balance.String()})
-// 		}
-
+// 		return unlockTime
 // 	}
 
-// 	return nil
-// }
-
-// func getValidator(grpcConn *grpc.ClientConn) (staking.Validator, error) {
-// 	stakingClient := staking.NewQueryClient(grpcConn)
-
-// 	stakingRes2, err := stakingClient.Validator(
-// 		context.Background(),
-// 		&staking.QueryValidatorRequest{ValidatorAddr: "cosmosvaloper1x88j7vp2xnw3zec8ur3g4waxycyz7m0mahdv3p"},
-// 	)
-// 	if err != nil {
-// 		return staking.Validator{}, err
-// 	}
-// 	var val staking.Validator = stakingRes2.Validator
-
-// 	return val, nil
-// }
-
-// func appendDelegatorData(delRes []staking.DelegationResponse, val staking.Validator) {
-// 	var totalDelegation float64 = val.DelegatorShares.MustFloat64()
-// 	for _, del := range delRes {
-// 		delegator = append(delegator, delegators{del.Delegation.DelegatorAddress, del.Balance.String(), float64(del.Balance.Amount.Int64()) / totalDelegation})
-// 	}
-// }
-
-// func exportOP2(delegator []delegators) {
-// 	file, err := os.Create("output_01_02.csv")
-// 	if err != nil {
-// 		log.Fatalln("failed to open file", err)
-// 	}
-// 	w := csv.NewWriter(file)
-// 	defer w.Flush()
-// 	// Using Write
-// 	for _, del := range delegator {
-// 		row := []string{del.address, fmt.Sprintf("%f", del.votingpower)}
-// 		if err := w.Write(row); err != nil {
-// 			log.Fatalln("error writing record to file", err)
-// 		}
-// 		// fmt.Println(i, row)
-// 	}
-// 	defer file.Close()
-// }
-
-// func exportOP3(delVal []delegatorValidator) {
-// 	file, err := os.Create("output_01_03.csv")
-// 	if err != nil {
-// 		log.Fatalln("failed to open file", err)
-// 	}
-// 	w := csv.NewWriter(file)
-// 	defer w.Flush()
-// 	// Using Write
-// 	for _, del := range delVal {
-// 		row := []string{del.delegatorAddr, del.validatorAddr, del.bondedToken}
-// 		if err := w.Write(row); err != nil {
-// 			log.Fatalln("error writing record to file", err)
-// 		}
-// 		// fmt.Println(i, row)
-// 	}
-// 	defer file.Close()
+// 	return payload.Genesis_time
 // }
