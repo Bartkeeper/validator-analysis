@@ -20,7 +20,6 @@ var GrpcConnC1 *grpc.ClientConn
 func main() {
 
 	startMenu()
-
 }
 
 // This method will start the CLI application. The user can choose which challenge should be performed
@@ -39,19 +38,19 @@ func startMenu() {
 	switch choice {
 	case "c1o1":
 		fmt.Println("You just started Challenge #01 Output #1. Please hold on while we query the node and generate the csv dump.")
-		GrpcConnC1 = getGrpcConnC1()
+		GrpcConnC1 := getGrpcConnC1("cosmos-grpc.polkachu.com:14990")
 		output01(GrpcConnC1)
 		defer GrpcConnC1.Close()
 		fmt.Println("CSV dump available")
 	case "c1o2":
 		fmt.Println("You just started Challenge #01 Output #2. Please hold on while we query the node and generate the csv dump.")
-		GrpcConnC1 = getGrpcConnC1()
+		GrpcConnC1 := getGrpcConnC1("cosmos-grpc.polkachu.com:14990")
 		output02(GrpcConnC1)
 		defer GrpcConnC1.Close()
 		fmt.Println("CSV dump available")
 	case "c1o3":
 		fmt.Println("You just started Challenge #01 Output #3. Please hold on while we query the node and generate the csv dump.")
-		GrpcConnC1 = getGrpcConnC1()
+		GrpcConnC1 := getGrpcConnC1("cosmos-grpc.polkachu.com:14990")
 		output03(GrpcConnC1)
 		defer GrpcConnC1.Close()
 		fmt.Println("CSV dump available")
@@ -63,14 +62,14 @@ func startMenu() {
 }
 
 // This method sets up a grpc connection to the Cosmos Hub and stores it in a global variable
-func getGrpcConnC1() *grpc.ClientConn {
+func getGrpcConnC1(endpoint string) *grpc.ClientConn {
 	grpcConnC1, err := grpc.Dial(
-		"cosmos-grpc.polkachu.com:14990", // Polkachu's gRPC server address for the Cosmos Hub
+		endpoint, // Polkachu's gRPC server address for the Cosmos Hub
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithDefaultCallOptions(grpc.ForceCodec(codec.NewProtoCodec(nil).GRPCCodec())),
 	)
 	if err != nil {
-		log.Fatal("could not get grpc connection, reason: ", err)
+		log.Panic("could not get grpc connection, reason: ", err)
 	}
 
 	return grpcConnC1

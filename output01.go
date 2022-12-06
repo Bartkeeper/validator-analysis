@@ -125,7 +125,7 @@ func getSelfDelegation(grpcConn *grpc.ClientConn, valAdds []valAdd,
 			if del.Delegation.DelegatorAddress == val.accAdd {
 				valAdds[i].selfDelegation = del.Balance.String() // append the self-delegation to the exportable slice
 			} else {
-				log.Fatalln("delegtor address does not equal validator address")
+				log.Fatal("delegtor address does not equal validator address")
 			}
 		}
 	}
