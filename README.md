@@ -4,10 +4,9 @@ This repository contains solutions for the provided validator challenges.
 
 ## Prerequisites
 
-<ol>
-<li> Make sure you have `go v18` or higher installed. You can check this by entering `go version` in your terminal or download go [here](https://go.dev/dl/). </li>
-<li> Clone this repository </li>
-</ol>
+Make sure you have `go v18` or higher installed. You can check this by entering `go version` in your terminal or download go [here](https://go.dev/dl/).
+
+Clone this repository
 
 ## Start the program
 
