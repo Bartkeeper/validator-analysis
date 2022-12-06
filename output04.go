@@ -8,9 +8,11 @@ import (
 	"os"
 	"strconv"
 	"time"
+	// auth staking "github.com/cosmos/cosmos-sdk/x/auth/types"
 )
 
-var UmeeGenesis string = "https://raw.githubusercontent.com/umee-network/mainnet/main/genesis.json"
+// Bear with me. I ran into an issue where I had to store the genesis file data in a struct.
+// Alternative way (with unresolved bug) at the end of this file
 
 type baseGenesis struct {
 	Genesis_time     time.Time
@@ -96,24 +98,30 @@ type VestingStruct struct {
 	Amount string
 }
 
+// This is a struct that helps generate and assemble the output
 type vestingAccs struct {
 	vestAddress string
 	vestTokens  string
 	unlockDate  string
 }
 
+// This is a struct that helps generate and assemble the output
 var vestingAnalysis []vestingAccs
+
+// The genesisFile
 var payload baseGenesis
 
+// An accumulator function that executes all functions for challenge 01 output 1 and stores variables
 func Output04() {
 	getGenesis()
 	appendVestingData(payload)
 	exportOP4(vestingAnalysis)
 }
 
-func getGenesis() error {
-
-	content, err := ioutil.ReadFile("./umee-genesis.json")
+// This function stores the genesisFile in the variable genesisFile
+func getGenesis() {
+	// make sure this file is in the root directory of the
+	content, err := ioutil.ReadFile("./inputs/umee-genesis.json")
 	if err != nil {
 		log.Fatal("Error when opening file: ", err)
 	}
@@ -122,10 +130,10 @@ func getGenesis() error {
 	if err != nil {
 		log.Fatal("Error when opening file: ", err)
 	}
-
-	return err
 }
 
+// This function queries each account's end_time and formats it in a regular timestamp
+// It appends a vesting account's data to the output slice
 func appendVestingData(payload baseGenesis) {
 
 	for _, acc := range payload.App_state.Auth.Accounts {
@@ -151,6 +159,7 @@ func appendVestingData(payload baseGenesis) {
 
 }
 
+// This function takes the slice and exports it in a CSV
 func exportOP4(vestingAnalysis []vestingAccs) {
 	file, err := os.Create("output_04.csv")
 	if err != nil {
@@ -159,6 +168,10 @@ func exportOP4(vestingAnalysis []vestingAccs) {
 	w := csv.NewWriter(file)
 	defer w.Flush()
 	// Using Write
+	header := []string{"Vesting Account", "Vested Tokens", "Unlock Date"}
+	if err := w.Write(header); err != nil {
+		log.Fatalln("error writing record to file", err)
+	}
 	for _, van := range vestingAnalysis {
 		row := []string{van.vestAddress, van.vestTokens, van.unlockDate}
 		if err := w.Write(row); err != nil {
@@ -169,19 +182,38 @@ func exportOP4(vestingAnalysis []vestingAccs) {
 }
 
 /*
-**** Legacy Code. I tried to query the accounts from the node directly, but ran into a bug I couldn't fix in time
+**** Legacy Code. ****
 
-// func getGrpcConnC2() (*grpc.ClientConn, error) {
-// 	GrpcConnC2, err := grpc.Dial(
-// 		"umee-grpc.polkachu.com:13690",
-// 		grpc.WithTransportCredentials(insecure.NewCredentials()),
-// 		grpc.WithDefaultCallOptions(grpc.ForceCodec(codec.NewProtoCodec(nil).GRPCCodec())),
-// 	)
-// 	if err != nil {
-// 		return nil, err
-// 	}
+I tried to query the accounts from the node directly, but ran into a bug I couldn't fix in time.
+This area is commented out because I want to show you guys my thought process and where I got stuck.
 
-// 	return GrpcConnC2, nil
-// }
+func getGrpcConnC2() (*grpc.ClientConn, error) {
+	GrpcConnC2, err := grpc.Dial(
+		"umee-grpc.polkachu.com:13690",
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithDefaultCallOptions(grpc.ForceCodec(codec.NewProtoCodec(nil).GRPCCodec())),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return GrpcConnC2, nil
+}
+
+func getAccounts(grpcConn *grpc.ClientConn) {
+	authClient := auth.NewQueryClient(grpcConn)
+
+	authRes, err := authClient.Accounts{ //here is where the program paniced with "runtime error: invalid memory address or nil pointer dereference"
+		context.Background(),
+		&auth.QueryAccountsRequest{},
+	}
+	if err != nil {
+		return nil, err
+	}
+
+}
+
+// If this would have worked, I would have been able to query the vesting accounts that came from genesis by calling GetGenesisStateFromAppState.
+// This would have avoided parsing the genesis file into a tree of structs.
 
 */

@@ -61,4 +61,3 @@ The upgrade handler is a key actor in this process as it keeps track of the modu
 
 Upgrades are still a very risky endeavor on the Cosmos Hub and other Cosmos SDK-based chains. One of the largests risks are that not enough validators are running the latest binaries and risk halting the chain, which happens when more than 1/3 of the voting power is not up-to-date. This could become extra crucial when there is a critical bug or error that either causes validators to propose different consensus states or if a bug allows for an attacter to execute illicit activities. In both cases, all validators need to quickly agree on what to do, to avoid further consequences like slashing of delegator's funds. 
 Tools like Cosmovisor are a blessing because they help conducting smooth upgrades, however, validators need to be aware of - and use them. 
-
