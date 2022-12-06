@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/csv"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -74,7 +75,7 @@ type AuthStruct struct {
 }
 
 type AccountStruct struct {
-	Typ                  string
+	Type                 string
 	Base_vesting_account BaseVestingAccount
 }
 
@@ -111,10 +112,13 @@ var vestingAnalysis []vestingAccs
 // The genesisFile
 var payload baseGenesis
 
+var tokenAmounts = make(map[string]int64)
+
 // An accumulator function that executes all functions for challenge 01 output 1 and stores variables
 func Output04() {
 	getGenesis()
 	appendVestingData(payload)
+	getVestingSchedule(payload)
 	exportOP4(vestingAnalysis)
 }
 
@@ -159,6 +163,21 @@ func appendVestingData(payload baseGenesis) {
 
 }
 
+func getVestingSchedule(payload baseGenesis) {
+
+	var unlockTimes = make(map[string]int)
+	for _, acc := range payload.App_state.Auth.Accounts {
+		unlockTimes[acc.Base_vesting_account.End_time] = unlockTimes[acc.Base_vesting_account.End_time] + 1
+
+		for _, v := range acc.Base_vesting_account.Original_vesting {
+			amount, _ := strconv.ParseInt(v.Amount, 10, 64)
+			tokenAmounts[acc.Base_vesting_account.End_time] = tokenAmounts[acc.Base_vesting_account.End_time] + amount
+		}
+	}
+
+	exportOP4_1(tokenAmounts)
+}
+
 // This function takes the slice and exports it in a CSV
 func exportOP4(vestingAnalysis []vestingAccs) {
 	file, err := os.Create("output_04.csv")
@@ -173,7 +192,34 @@ func exportOP4(vestingAnalysis []vestingAccs) {
 		log.Fatalln("error writing record to file", err)
 	}
 	for _, van := range vestingAnalysis {
-		row := []string{van.vestAddress, van.vestTokens, van.unlockDate}
+		if van.vestAddress != "" {
+			row := []string{van.vestAddress, van.vestTokens, van.unlockDate}
+			if err := w.Write(row); err != nil {
+				log.Fatalln("error writing record to file", err)
+			}
+		}
+	}
+	defer file.Close()
+}
+
+func exportOP4_1(tokenAmounts map[string]int64) {
+	file, err := os.Create("output_04-vesting-schedule.csv")
+	if err != nil {
+		log.Fatalln("failed to open file", err)
+	}
+	w := csv.NewWriter(file)
+	defer w.Flush()
+	// Using Write
+	header := []string{"Timestamp", "Unlocked Tokens"}
+	if err := w.Write(header); err != nil {
+		log.Fatalln("error writing record to file", err)
+	}
+	for ts, to := range tokenAmounts {
+		amount := strconv.FormatInt(to, 10)
+		timestamp, _ := strconv.ParseInt(ts, 10, 64)
+		var time = time.Unix(timestamp, 0)
+		fmt.Println("I'm not sure why the following rows are not written in the csv.")
+		row := []string{time.String(), amount}
 		if err := w.Write(row); err != nil {
 			log.Fatalln("error writing record to file", err)
 		}
